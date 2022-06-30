@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,9 +35,18 @@ namespace MD5
 
         //тут будут храниться блоки
         uint[] block;
+        uint a, b, c, d = 0;
+
+        public Crypt()
+        {
+            a = 0x67452301;                                                    //инициализируем начальные значения результирующих переменных
+            b = 0xefcdab89;
+            c = 0x98badcfe;
+            d = 0x10325476;
+        }
 
         //встроенная функция md5
-        public   string etalon_md5(string input_string)
+        public string etalon_md5(string input_string)
         {
             byte[] input = System.Text.Encoding.ASCII.GetBytes(input_string);
             System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create();
@@ -50,8 +60,8 @@ namespace MD5
             return sb.ToString();
         }
 
-        //моя md5
-        public string my_md5(string input_string)
+        //мой md5 для входной строки
+        public void my_md5(string input_string)
         {
             byte[] input = System.Text.Encoding.ASCII.GetBytes(input_string);       //преобразуем входную строку в битовый масиив
             byte[] input_plus;
@@ -73,113 +83,195 @@ namespace MD5
 
             byte[] len_bytes = BitConverter.GetBytes((ulong)input.Length * 8);      //записываем в байтовый массив исходную длину сообшения
             for (int i = input_plus.Length - 8; i < input_plus.Length; i++)         //записываем битовый массив, полученный выше, в конец расширенного массива входных данных
-            {
                 input_plus[i] = len_bytes[i - (input_plus.Length - 8)];
-            }
-
-            uint a = 0x67452301;                                                    //инициализируем начальные значения результирующих переменных
-            uint b = 0xefcdab89;
-            uint c = 0x98badcfe;
-            uint d = 0x10325476;
 
             for (int num_block = 0; num_block < input_plus.Length / 64; num_block++)//основной цикл для блоков
             {
-                block = new uint[16];                                               //инициализируем массив блоков (uint-овый массив, потому что удобно так)
-                for (int i = 0; i < 16; i++)                                        //заполняем блоки
+                NextBlockFromStringGeneration(num_block, ref input_plus);
+                BlockProcessing();
+            }            
+        }
+
+        //мой md5 для входного файла
+        public async Task<int> my_md5_for_file(string path)
+        {
+            if (!File.Exists(path))
+                return -1;
+            using (FileStream fstream = File.OpenRead(path))
+            {
+                int position = 0;
+                long fileLength = fstream.Length, restOfFile = 0, fullBlockCount = 0, additionalBlockCount = 0;
+                byte[] buffer = new byte[64];
+                fullBlockCount = fileLength / 64;
+                restOfFile = fileLength % 64;
+                if (restOfFile < 56)
+                    additionalBlockCount = 1;
+                else
+                    additionalBlockCount = 2;
+
+                for (int i = 0; i < fullBlockCount; i++)                        //считывание и обработка всех "полных" блоков
                 {
-                    byte[] temp = new byte[4];
-                    temp[0] = input_plus[num_block * 64 + i * 4];                   //берем по четыре байта и запихиваем их в буфер
-                    temp[1] = input_plus[num_block * 64 + i * 4 + 1];
-                    temp[2] = input_plus[num_block * 64 + i * 4 + 2];
-                    temp[3] = input_plus[num_block * 64 + i * 4 + 3];
-                    block[i] = BitConverter.ToUInt32(temp, 0);                      //переводим буфер в uint и записываем результат в массив блоков
+                    //buffer = new byte[64];
+                    await fstream.ReadAsync(buffer, 0, 64);              //считываем
+                    position += 64;                                             //запоминаем новую позицию
+                    NextBlockFromFileGeneration(ref buffer);                    //перегоняем считанные байты в block
+                    BlockProcessing();                                          //обрабатываем новый блок
                 }
 
+                byte[] longBuffer = new byte[128];
+                await fstream.ReadAsync(longBuffer, 0, (int)restOfFile);
+                position = (int)restOfFile;
+                longBuffer[position] = 0x80;
+                position += 1;                                                  //запоминаем текущее положение в массиве
+                while (position % 64 != 56)                                     //пока не дошли до 56 позиции забиваем массив нулями
+                {
+                    longBuffer[position] = 0x00;
+                    position++;
+                }
 
-                uint aa = a, bb = b, cc = c, dd = d;                                //запоминаем значения результирующих переменных до раундов
-                a = round(a, b, c, d, 0, 7, 1, 1);                                  //далее 64 раунда
-                d = round(d, a, b, c, 1, 12, 2, 1);
-                c = round(c, d, a, b, 2, 17, 3, 1);
-                b = round(b, c, d, a, 3, 22, 4, 1);
+                byte[] len_bytes = BitConverter.GetBytes((ulong)fileLength * 8);//записываем в байтовый массив исходную длину сообшения
+                for (int i = position; i < position + 8; i++)                   //записываем битовый массив, полученный выше, в конец расширенного массива входных данных
+                    longBuffer[i] = len_bytes[i - position];
 
-                a = round(a, b, c, d, 4, 7, 5, 1);
-                d = round(d, a, b, c, 5, 12, 6, 1);
-                c = round(c, d, a, b, 6, 17, 7, 1);
-                b = round(b, c, d, a, 7, 22, 8, 1);
+                if (additionalBlockCount == 1)
+                {
+                    NextBlockFromFileGeneration(ref longBuffer);                //перегоняем считанные байты в block
+                    BlockProcessing();                                          //обрабатываем новый блок
+                }
 
-                a = round(a, b, c, d, 8, 7, 9, 1);
-                d = round(d, a, b, c, 9, 12, 10, 1);
-                c = round(c, d, a, b, 10, 17, 11, 1);
-                b = round(b, c, d, a, 11, 22, 12, 1);
+                if (additionalBlockCount == 2)
+                {
+                    NextBlockFromFileGeneration(ref longBuffer);                //перегоняем считанные байты в block
+                    BlockProcessing();                                          //обрабатываем новый блок
+                    for (int i = 0; i < 64; i++)
+                        buffer[i] = longBuffer[i + 64];
+                    NextBlockFromFileGeneration(ref buffer);                    //перегоняем считанные байты в block
+                    BlockProcessing();                                          //обрабатываем новый блок
+                }
 
-                a = round(a, b, c, d, 12, 7, 13, 1);
-                d = round(d, a, b, c, 13, 12, 14, 1);
-                c = round(c, d, a, b, 14, 17, 15, 1);
-                b = round(b, c, d, a, 15, 22, 16, 1);
-
-                a = round(a, b, c, d, 1, 5, 17, 2);
-                d = round(d, a, b, c, 6, 9, 18, 2);
-                c = round(c, d, a, b, 11, 14, 19, 2);
-                b = round(b, c, d, a, 0, 20, 20, 2);
-
-                a = round(a, b, c, d, 5, 5, 21, 2);
-                d = round(d, a, b, c, 10, 9, 22, 2);
-                c = round(c, d, a, b, 15, 14, 23, 2);
-                b = round(b, c, d, a, 4, 20, 24, 2);
-
-                a = round(a, b, c, d, 9, 5, 25, 2);
-                d = round(d, a, b, c, 14, 9, 26, 2);
-                c = round(c, d, a, b, 3, 14, 27, 2);
-                b = round(b, c, d, a, 8, 20, 28, 2);
-
-                a = round(a, b, c, d, 13, 5, 29, 2);
-                d = round(d, a, b, c, 2, 9, 30, 2);
-                c = round(c, d, a, b, 7, 14, 31, 2);
-                b = round(b, c, d, a, 12, 20, 32, 2);
-
-                a = round(a, b, c, d, 5, 4, 33, 3);
-                d = round(d, a, b, c, 8, 11, 34, 3);
-                c = round(c, d, a, b, 11, 16, 35, 3);
-                b = round(b, c, d, a, 14, 23, 36, 3);
-
-                a = round(a, b, c, d, 1, 4, 37, 3);
-                d = round(d, a, b, c, 4, 11, 38, 3);
-                c = round(c, d, a, b, 7, 16, 39, 3);
-                b = round(b, c, d, a, 10, 23, 40, 3);
-
-                a = round(a, b, c, d, 13, 4, 41, 3);
-                d = round(d, a, b, c, 0, 11, 42, 3);
-                c = round(c, d, a, b, 3, 16, 43, 3);
-                b = round(b, c, d, a, 6, 23, 44, 3);
-
-                a = round(a, b, c, d, 9, 4, 45, 3);
-                d = round(d, a, b, c, 12, 11, 46, 3);
-                c = round(c, d, a, b, 15, 16, 47, 3);
-                b = round(b, c, d, a, 2, 23, 48, 3);
-
-                a = round(a, b, c, d, 0, 6, 49, 4);
-                d = round(d, a, b, c, 7, 10, 50, 4);
-                c = round(c, d, a, b, 14, 15, 51, 4);
-                b = round(b, c, d, a, 5, 21, 52, 4);
-
-                a = round(a, b, c, d, 12, 6, 53, 4);
-                d = round(d, a, b, c, 3, 10, 54, 4);
-                c = round(c, d, a, b, 10, 15, 55, 4);
-                b = round(b, c, d, a, 1, 21, 56, 4);
-
-                a = round(a, b, c, d, 8, 6, 57, 4);
-                d = round(d, a, b, c, 15, 10, 58, 4);
-                c = round(c, d, a, b, 6, 15, 59, 4);
-                b = round(b, c, d, a, 13, 21, 60, 4);
-
-                a = round(a, b, c, d, 4, 6, 61, 4);
-                d = round(d, a, b, c, 11, 10, 62, 4);
-                c = round(c, d, a, b, 2, 15, 63, 4);
-                b = round(b, c, d, a, 9, 21, 64, 4);
-
-                a += aa; b += bb; c += cc; d += dd;                                 //добавляем результат раундов к результирующим переменным
             }
+            return 0;
+        }
 
+        //генерация нового блока при работе со строкой
+        void NextBlockFromStringGeneration(int blockNumber, ref byte[] input)
+        {
+            block = new uint[16];                                               //инициализируем массив блоков (uint-овый массив, потому что удобно так)
+            for (int i = 0; i < 16; i++)                                        //заполняем блоки
+            {
+                byte[] temp = new byte[4];
+                temp[0] = input[blockNumber * 64 + i * 4];                      //берем по четыре байта и запихиваем их в буфер
+                temp[1] = input[blockNumber * 64 + i * 4 + 1];
+                temp[2] = input[blockNumber * 64 + i * 4 + 2];
+                temp[3] = input[blockNumber * 64 + i * 4 + 3];
+                block[i] = BitConverter.ToUInt32(temp, 0);                      //переводим буфер в uint и записываем результат в массив блоков
+            }
+        }
+
+        //генерация нового блока при работе с файлом
+        void NextBlockFromFileGeneration(ref byte[] input)
+        {
+            block = new uint[16];                                               //инициализируем массив блоков (uint-овый массив, потому что удобно так)
+            for (int i = 0; i < 16; i++)                                        //заполняем блоки
+            {
+                byte[] temp = new byte[4];
+                temp[0] = input[i * 4];                                         //берем по четыре байта и запихиваем их в буфер
+                temp[1] = input[i * 4 + 1];
+                temp[2] = input[i * 4 + 2];
+                temp[3] = input[i * 4 + 3];
+                block[i] = BitConverter.ToUInt32(temp, 0);                      //переводим буфер в uint и записываем результат в массив блоков
+            }
+        }
+
+        //исполнение 64 раундов для подготовленного блока
+        void BlockProcessing()
+        {
+            uint aa = a, bb = b, cc = c, dd = d;                                //запоминаем значения результирующих переменных до раундов
+            a = round(a, b, c, d, 0, 7, 1, 1);                                  //далее 64 раунда
+            d = round(d, a, b, c, 1, 12, 2, 1);
+            c = round(c, d, a, b, 2, 17, 3, 1);
+            b = round(b, c, d, a, 3, 22, 4, 1);
+
+            a = round(a, b, c, d, 4, 7, 5, 1);
+            d = round(d, a, b, c, 5, 12, 6, 1);
+            c = round(c, d, a, b, 6, 17, 7, 1);
+            b = round(b, c, d, a, 7, 22, 8, 1);
+
+            a = round(a, b, c, d, 8, 7, 9, 1);
+            d = round(d, a, b, c, 9, 12, 10, 1);
+            c = round(c, d, a, b, 10, 17, 11, 1);
+            b = round(b, c, d, a, 11, 22, 12, 1);
+
+            a = round(a, b, c, d, 12, 7, 13, 1);
+            d = round(d, a, b, c, 13, 12, 14, 1);
+            c = round(c, d, a, b, 14, 17, 15, 1);
+            b = round(b, c, d, a, 15, 22, 16, 1);
+
+            a = round(a, b, c, d, 1, 5, 17, 2);
+            d = round(d, a, b, c, 6, 9, 18, 2);
+            c = round(c, d, a, b, 11, 14, 19, 2);
+            b = round(b, c, d, a, 0, 20, 20, 2);
+
+            a = round(a, b, c, d, 5, 5, 21, 2);
+            d = round(d, a, b, c, 10, 9, 22, 2);
+            c = round(c, d, a, b, 15, 14, 23, 2);
+            b = round(b, c, d, a, 4, 20, 24, 2);
+
+            a = round(a, b, c, d, 9, 5, 25, 2);
+            d = round(d, a, b, c, 14, 9, 26, 2);
+            c = round(c, d, a, b, 3, 14, 27, 2);
+            b = round(b, c, d, a, 8, 20, 28, 2);
+
+            a = round(a, b, c, d, 13, 5, 29, 2);
+            d = round(d, a, b, c, 2, 9, 30, 2);
+            c = round(c, d, a, b, 7, 14, 31, 2);
+            b = round(b, c, d, a, 12, 20, 32, 2);
+
+            a = round(a, b, c, d, 5, 4, 33, 3);
+            d = round(d, a, b, c, 8, 11, 34, 3);
+            c = round(c, d, a, b, 11, 16, 35, 3);
+            b = round(b, c, d, a, 14, 23, 36, 3);
+
+            a = round(a, b, c, d, 1, 4, 37, 3);
+            d = round(d, a, b, c, 4, 11, 38, 3);
+            c = round(c, d, a, b, 7, 16, 39, 3);
+            b = round(b, c, d, a, 10, 23, 40, 3);
+
+            a = round(a, b, c, d, 13, 4, 41, 3);
+            d = round(d, a, b, c, 0, 11, 42, 3);
+            c = round(c, d, a, b, 3, 16, 43, 3);
+            b = round(b, c, d, a, 6, 23, 44, 3);
+
+            a = round(a, b, c, d, 9, 4, 45, 3);
+            d = round(d, a, b, c, 12, 11, 46, 3);
+            c = round(c, d, a, b, 15, 16, 47, 3);
+            b = round(b, c, d, a, 2, 23, 48, 3);
+
+            a = round(a, b, c, d, 0, 6, 49, 4);
+            d = round(d, a, b, c, 7, 10, 50, 4);
+            c = round(c, d, a, b, 14, 15, 51, 4);
+            b = round(b, c, d, a, 5, 21, 52, 4);
+
+            a = round(a, b, c, d, 12, 6, 53, 4);
+            d = round(d, a, b, c, 3, 10, 54, 4);
+            c = round(c, d, a, b, 10, 15, 55, 4);
+            b = round(b, c, d, a, 1, 21, 56, 4);
+
+            a = round(a, b, c, d, 8, 6, 57, 4);
+            d = round(d, a, b, c, 15, 10, 58, 4);
+            c = round(c, d, a, b, 6, 15, 59, 4);
+            b = round(b, c, d, a, 13, 21, 60, 4);
+
+            a = round(a, b, c, d, 4, 6, 61, 4);
+            d = round(d, a, b, c, 11, 10, 62, 4);
+            c = round(c, d, a, b, 2, 15, 63, 4);
+            b = round(b, c, d, a, 9, 21, 64, 4);
+
+            a += aa; b += bb; c += cc; d += dd;                                 //добавляем результат раундов к результирующим переменным
+        }
+
+        public string TakeMD5Result()
+        {
             byte[] res = new byte[16];
 
             BitConverter.GetBytes(a).CopyTo(res, 0);                                //запишем битовое представление результирующих переменных в битовый массив res
@@ -187,12 +279,8 @@ namespace MD5
             BitConverter.GetBytes(c).CopyTo(res, 8);
             BitConverter.GetBytes(d).CopyTo(res, 12);
 
-            StringBuilder sb = new StringBuilder();                                 //переведем res в строку hex-а
-            for (int i = 0; i < res.Length; i++)
-            {
-                sb.Append(res[i].ToString());
-            }
-            return sb.ToString();
+            string hex = BitConverter.ToString(res).Replace("-", string.Empty);
+            return hex;
         }
 
         //раундовые функции

@@ -5643,11 +5643,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\UnitTests\\UnitTests.csproj",
+      "projectUniqueName": "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\UnitTests\\UnitTests.csproj",
       "projectName": "UnitTests",
-      "projectPath": "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\UnitTests\\UnitTests.csproj",
+      "projectPath": "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\UnitTests\\UnitTests.csproj",
       "packagesPath": "C:\\Users\\Павел\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\UnitTests\\obj\\",
+      "outputPath": "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\UnitTests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -5668,8 +5668,8 @@
         "netcoreapp3.1": {
           "targetAlias": "netcoreapp3.1",
           "projectReferences": {
-            "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\MD5\\MD5.csproj": {
-              "projectPath": "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\MD5\\MD5.csproj"
+            "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\MD5\\MD5.csproj": {
+              "projectPath": "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\MD5\\MD5.csproj"
             }
           }
         }

@@ -20,11 +20,31 @@ namespace MD5
             InitializeComponent();
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private async void button1_Click(object sender, EventArgs e)
         {
             string input = textBox1.Text;
             Crypt crypt = new Crypt();
-            textBox2.Text = crypt.my_md5(input);
+
+            if(radioButton1.Checked)
+            {
+                crypt.my_md5(input);
+                textBox2.Text = crypt.TakeMD5Result();
+            }
+            else
+            {
+                int res = await crypt.my_md5_for_file(input);
+                if (res == 0)
+                    textBox2.Text = crypt.TakeMD5Result();
+                else
+                    textBox2.Text = "Файл не существует";
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog OPF = new OpenFileDialog();
+            if (OPF.ShowDialog() == DialogResult.OK)
+                textBox1.Text = OPF.FileName;
         }
     }
 }

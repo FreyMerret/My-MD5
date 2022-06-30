@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "y85B+F23ppcwlex4+YeOwWp8gK947ITOEq+6d8SLK6ariJf9bg7eOfjG+CVqRKBeAwrI9zomB55BeyBpEQvb6w==",
+  "dgSpecHash": "o1PMwxeg+KH7QArAvqqST1IQbO+DUAjdNE5y636F7Edr+H+FS8huNr5qGmVw4sL55K9aMElXlcZ4d3Ig17Vp6w==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Павел\\Desktop\\Учеба универ по курсам\\Осипов\\MD5\\MD5\\UnitTests\\UnitTests.csproj",
+  "projectFilePath": "C:\\Users\\Павел\\Desktop\\Study\\My-MD5\\MD5\\UnitTests\\UnitTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Павел\\.nuget\\packages\\coverlet.collector\\1.3.0\\coverlet.collector.1.3.0.nupkg.sha512",
     "C:\\Users\\Павел\\.nuget\\packages\\microsoft.codecoverage\\16.7.1\\microsoft.codecoverage.16.7.1.nupkg.sha512",
